@@ -122,23 +122,43 @@ class HubstaffExport
       end
     end
 
-    def authentication
-      puts 'doing authentication' if @options.verbose
-      uri = URI.parse(@api_url)
-
-      request = Net::HTTP::Post.new(uri)
-      request['app_token'] = @options.app_token
-      request.set_form_data(email: @options.email, password: @options.password)
-      pp request
+    def http(uri)
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = true
-      # http.verify_mode = OpenSSL::SSL::VERIFY_NONE
-      response = http.request(request)
-      pp response
-      pp response.body
+      return http
+    end
+
+    def post(url, params)
+      uri = URI.parse(url)
+      request = Net::HTTP::Post.new(uri.request_uri)
+      request['app_token'] = @options.app_token
+      request.set_form_data(params)
+
+      parse_response(http(uri).request(request))
+    rescue Errno::ETIMEDOUT => ex
+      puts 'there was a timout'; exit 0
+    end
+
+    def parse_response(response)
+      if response.is_a?(Net::HTTPOK) || response.is_a?(Net::HTTPCreated)
+        return JSON.parse(response.body)
+      elsif response.is_a?(Net::HTTPNotFound)
+        puts 'page not found'; exit 0
+      elsif response.is_a?(Net::HTTPUnauthorized)
+        puts 'not authorized request'; exit 0
+      elsif response.is_a?(Net::HTTPBadRequest)
+        puts 'bad request'; exit 0
+      else
+        puts 'other error'; exit 0
+      end
+    end
+
+    def authentication
+      puts 'doing authentication' if @options.verbose
+      response = post("#{@api_url}/auth", {email: @options.email, password: @options.password})
 
       file = File.new('hubstaff-client.cfg', "w")
-      File.open(file, 'w') { |file| file.write({token: @options.token, app_token: @options.app_token, password: @options.password, email: @options.email}.to_json) }
+      File.open(file, 'w') { |file| file.write({token: response["user"]["auth_token"], app_token: @options.app_token, password: @options.password, email: @options.email}.to_json) }
     end
 
     def client_config
