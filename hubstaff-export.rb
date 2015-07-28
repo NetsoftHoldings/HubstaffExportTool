@@ -46,7 +46,7 @@ class HubstaffExport
     # Set defaults
     @options = OpenStruct.new
     @options.verbose = false
-    @options.image_formats = 'full'
+    @options.image_format = 'full'
     @options.directory = 'screens'
     @api_url = 'https://api.hubstaff.com/v1'
   end
@@ -92,8 +92,8 @@ class HubstaffExport
         opts.on('-j', '--projects PROJECTS', 'comma separated list of project IDs')  {|projects| @options.projects = projects}
         opts.on('-u', '--users USERS', 'comma separated list of user IDs')           {|users| @options.users = users}
 
-        opts.on('-i', '--images IMAGE_FORMATS', 'comma separated list of formats (full, thumb, both)') do |image_formats|
-          @options.image_formats = image_formats
+        opts.on('-i', '--image IMAGE_FORMAT', 'what image to export (full || thumb || both)') do |image_format|
+          @options.image_format = image_format
         end
         opts.on('-o', '--organizations ORGANIZATIONS', 'comma separated list of organization IDs') do |organizations|
           @options.organizations = organizations
@@ -213,28 +213,66 @@ class HubstaffExport
 
       # display a simple message of the number of screenshots available
       puts 'Saving screenshots:'
-      puts "    total number of screenshots #{response['screenshots'].count}"
+      puts "    total number of screenshots #{@options.image_format=='both' ? response['screenshots'].count*2 : response['screenshots'].count}"
 
       response['screenshots'].map do |screenshot|
-        # create the directory path where we'll save all the screenshots
-        uri = URI(screenshot['url'])
-        directory_path = "#{@options.directory}/project - #{screenshot['project_id']}/user - #{screenshot['user_id']}/#{Date.parse(screenshot['time_slot']).strftime('%Y-%m-%d')}"
-        FileUtils::mkdir_p(directory_path) unless File.directory?(directory_path)
-        # Save screenshots provided and output some feedback
-        Net::HTTP.start(uri.host) do |http|
-          print '.'
-
-          resp = http.get(uri.path)
-          file_name = "#{DateTime.parse(screenshot['time_slot']).strftime('%I_%M')}-#{screenshot['screen']}.jpg"
-          file_path = File.join(@options.directory, "project - #{screenshot['project_id']}", "user - #{screenshot['user_id']}", Date.parse(screenshot['time_slot']).strftime('%Y-%m-%d'), file_name)
-
-          open(file_path, "wb") do |file|
-            file.write(resp.body)
-          end
-        end
+        save_files(screenshot, @options.image_format)
       end
       puts ''
       puts "Done."
+    end
+
+    def check_directory(screenshot)
+      directory_path = "#{@options.directory}/project - #{screenshot['project_id']}/user - #{screenshot['user_id']}/#{Date.parse(screenshot['time_slot']).strftime('%Y-%m-%d')}"
+      FileUtils::mkdir_p(directory_path) unless File.directory?(directory_path)
+    end
+
+    def get_screenshot_details(screenshot, thumb=false)
+      # create the directory path where we'll save all the screenshots
+      check_directory(screenshot)
+
+      file_name = "#{DateTime.parse(screenshot['time_slot']).strftime('%I_%M')}-#{screenshot['screen']}.jpg"
+      file_name = file_name.gsub /\.[^\.]*$/, "_thumb\\0" if thumb
+      file_path = File.join(@options.directory, "project - #{screenshot['project_id']}", "user - #{screenshot['user_id']}", Date.parse(screenshot['time_slot']).strftime('%Y-%m-%d'), file_name)
+
+      file_path
+    end
+
+    def save_files(screenshot, image_format)
+      if image_format=='both'
+        save_full(screenshot)
+        save_thumb(screenshot)
+      elsif image_format=='full'
+        save_full(screenshot)
+      elsif image_format=='thumb'
+        save_thumb(screenshot)
+      end
+    end
+
+    def save_full(screenshot)
+      url_remote        = screenshot['url']
+      file_path = get_screenshot_details(screenshot)
+      download_file(url_remote, file_path)
+    end
+
+    def save_thumb(screenshot)
+      thumb_url_remote  = screenshot['url'].gsub /\.[^\.]*$/, "_thumb\\0"
+      thumb_file_path = get_screenshot_details(screenshot, true)
+      download_file(thumb_url_remote, thumb_file_path)
+    end
+
+    def download_file(url, file_path)
+      uri = URI(url)
+      # Save screenshots provided and output some feedback
+      Net::HTTP.start(uri.host) do |http|
+        print '.'
+
+        resp = http.get(uri.path)
+
+        open(file_path, "wb") do |file|
+          file.write(resp.body)
+        end
+      end
     end
 
     def fail(message)
