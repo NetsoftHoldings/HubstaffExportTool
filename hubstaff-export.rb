@@ -6,8 +6,8 @@
 #
 # == Examples
 #   Commands to call
-#     ruby hubstaff-export.rb authentication abc345 bob@example.com MyAwesomePass
-#     ruby hubstaff-export.rb export-screens 2015-06-01T00:00Z 2015-07-01T00:00Z -o 3 -e both -d ./screens-june
+#     ruby hubstaff-export.rb authentication -t apptoken -e user@email.com -p password
+#     ruby hubstaff-export.rb export-screens -s 2015-07-01T00:00:00Z -f 2015-07-01T07:00:00Z -o 84 -i both
 #
 # == Usage
 #   ruby hubstaff-export.rb [action] [options]
@@ -18,6 +18,18 @@
 #   -h, --help          Displays help message
 #   -v, --version       Display the version, then exit
 #   -V, --verbose       Verbose output
+#   -t, --apptoken      The application token in hubstaff
+#   -p, --password      The password to authenticate account
+#   -e, --email         The email used for authentication
+#   -s, --start_time    Start date to pick the screens
+#   -f, --stop_time     End date to pick screens
+#   -j, --projects      Comma separated list of project IDs
+#   -u, --users         Comma separated list of user IDs
+#   -i, --image         What image to export (full || thumb || both)
+#   -o, --organizations Comma separated list of organization IDs
+#   -d, --directory     A path to the output directory (otherwise ./screens is assumed)
+#
+#
 #
 # == Author
 #   Chocksy - @Hubstaff
@@ -197,7 +209,7 @@ class HubstaffExport
       File.open(file, 'w') { |file| file.write({auth_token: response["user"]["auth_token"], app_token: @options.app_token, password: @options.password, email: @options.email}.to_json) }
     end
 
-    def export_screens
+    def export_screens(offset=0)
       puts 'Exporting screens' if verbose?
       # raise error if the required parameters are missing
       fail 'start_time, stop_time & organizations are required' unless @options.start_time && @options.stop_time && @options.organizations
@@ -206,20 +218,23 @@ class HubstaffExport
                     stop_time:      @options.stop_time,
                     organizations:  @options.organizations,
                     users:          @options.users,
-                    projects:       @options.projects
+                    projects:       @options.projects,
+                    offset:         offset
                   }.compact
       response  = get("#{@api_url}/screenshots", arguments)
       fail 'there are no screenshots' unless response
 
       # display a simple message of the number of screenshots available
       puts 'Saving screenshots:'
-      puts "    total number of screenshots #{@options.image_format=='both' ? response['screenshots'].count*2 : response['screenshots'].count}"
-
+      puts "  total number of screenshots #{@options.image_format=='both' ? response['screenshots'].count*2 : response['screenshots'].count}"
+      puts "  *if we are going to have 100 screenshots here we will be making multiple requests until we get them all"
       response['screenshots'].map do |screenshot|
         save_files(screenshot, @options.image_format)
       end
       puts ''
       puts "Done."
+      # call the export screenshots method if we have 100 screenshots on the last request
+      export_screens(offset+100) if response['screenshots'].count==100
     end
 
     def check_directory(screenshot)
