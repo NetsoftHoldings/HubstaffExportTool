@@ -30,6 +30,12 @@ require 'fileutils'
 require 'json'
 require 'pp'
 
+class Hash
+  def compact
+    delete_if {|k,v| v.nil? }
+  end
+end
+
 class HubstaffExport
   VERSION = '0.0.1'
 
@@ -40,6 +46,8 @@ class HubstaffExport
     # Set defaults
     @options = OpenStruct.new
     @options.verbose = false
+    @options.image_formats = 'full'
+    @options.directory = 'screens'
     @api_url = 'https://api.hubstaff.com/v1'
   end
 
@@ -81,6 +89,12 @@ class HubstaffExport
         opts.on('-e', '--email EMAIL', 'the email used for authentication')          {|email| @options.email = email }
         opts.on('-s', '--start_time START_TIME', 'start date to pick the screens')   {|start_time| @options.start_time = start_time}
         opts.on('-f', '--stop_time STOP_TIME', 'end date to pick screens')           {|stop_time| @options.stop_time = stop_time }
+        opts.on('-j', '--projects PROJECTS', 'comma separated list of project IDs')  {|projects| @options.projects = projects}
+        opts.on('-u', '--users USERS', 'comma separated list of user IDs')           {|users| @options.users = users}
+
+        opts.on('-i', '--images IMAGE_FORMATS', 'comma separated list of formats (full, thumb, both)') do |image_formats|
+          @options.image_formats = image_formats
+        end
         opts.on('-o', '--organizations ORGANIZATIONS', 'comma separated list of organization IDs') do |organizations|
           @options.organizations = organizations
         end
@@ -185,23 +199,35 @@ class HubstaffExport
 
     def export_screens
       puts 'Exporting screens' if verbose?
+      # raise error if the required parameters are missing
       fail 'start_time, stop_time & organizations are required' unless @options.start_time && @options.stop_time && @options.organizations
-
-      response = get("#{@api_url}/screenshots", {start_time: @options.start_time, stop_time: @options.stop_time, organizations: @options.organizations})
+      # make the get request to get screenshots
+      arguments = { start_time:     @options.start_time,
+                    stop_time:      @options.stop_time,
+                    organizations:  @options.organizations,
+                    users:          @options.users,
+                    projects:       @options.projects
+                  }.compact
+      response  = get("#{@api_url}/screenshots", arguments)
       fail 'there are no screenshots' unless response
 
+      # display a simple message of the number of screenshots available
       puts 'Saving screenshots:'
-      puts "    total number of screenshots #{response['screenshots'].count}" if verbose?
+      puts "    total number of screenshots #{response['screenshots'].count}"
+
       response['screenshots'].map do |screenshot|
+        # create the directory path where we'll save all the screenshots
         uri = URI(screenshot['url'])
-        directory_path = "screenshots/project - #{screenshot['project_id']}/user - #{screenshot['user_id']}/#{Date.parse(screenshot['time_slot']).strftime('%Y-%m-%d')}"
+        directory_path = "#{@options.directory}/project - #{screenshot['project_id']}/user - #{screenshot['user_id']}/#{Date.parse(screenshot['time_slot']).strftime('%Y-%m-%d')}"
         FileUtils::mkdir_p(directory_path) unless File.directory?(directory_path)
         # Save screenshots provided and output some feedback
         Net::HTTP.start(uri.host) do |http|
           print '.'
+
           resp = http.get(uri.path)
           file_name = "#{DateTime.parse(screenshot['time_slot']).strftime('%I_%M')}-#{screenshot['screen']}.jpg"
-          file_path = File.join("screenshots", "project - #{screenshot['project_id']}", "user - #{screenshot['user_id']}", Date.parse(screenshot['time_slot']).strftime('%Y-%m-%d'), file_name)
+          file_path = File.join(@options.directory, "project - #{screenshot['project_id']}", "user - #{screenshot['user_id']}", Date.parse(screenshot['time_slot']).strftime('%Y-%m-%d'), file_name)
+
           open(file_path, "wb") do |file|
             file.write(resp.body)
           end
@@ -209,7 +235,6 @@ class HubstaffExport
       end
       puts ''
       puts "Done."
-      # pp response
     end
 
     def fail(message)
