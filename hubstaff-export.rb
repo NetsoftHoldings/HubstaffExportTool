@@ -26,6 +26,7 @@ require 'optparse'
 require 'ostruct'
 require 'date'
 require 'net/http'
+require 'fileutils'
 require 'json'
 require 'pp'
 
@@ -39,22 +40,22 @@ class HubstaffExport
     # Set defaults
     @options = OpenStruct.new
     @options.verbose = false
-    @api_url = 'https://api.hubstaff.com/v1/'
+    @api_url = 'https://api.hubstaff.com/v1'
   end
 
   # Parse options, check arguments, then process the command
   def run
     # puts arguments_valid?
     if parsed_options? && arguments_valid?
-      puts "Start at #{DateTime.now}\n" if @options.verbose
+      puts "Start at #{DateTime.now}" if verbose?
 
-      output_options if @options.verbose # [Optional]
+      output_options if verbose?
 
       process_command
 
-      puts "\nFinished at #{DateTime.now}" if @options.verbose
+      puts "Finished at #{DateTime.now}" if verbose?
     else
-      output_usage
+      puts 'The options passed are not valid!'
     end
   end
 
@@ -78,8 +79,8 @@ class HubstaffExport
         opts.on('-t', '--apptoken TOKEN', 'the application token in hubstaff')       {|token| @options.app_token = token}
         opts.on('-p', '--password PASSWORD', 'the password to authenticate account') {|password| @options.password = password }
         opts.on('-e', '--email EMAIL', 'the email used for authentication')          {|email| @options.email = email }
-        opts.on('-s', '--starts_on STARTS_ON', 'start date to pick the screens')         {|starts_on| @options.starts_on = starts_on}
-        opts.on('-f', '--ends_on ENDS_ON', 'end date to pick screens')                   {|ends_on| @options.ends_on = ends_on }
+        opts.on('-s', '--start_time START_TIME', 'start date to pick the screens')   {|start_time| @options.start_time = start_time}
+        opts.on('-f', '--stop_time STOP_TIME', 'end date to pick screens')           {|stop_time| @options.stop_time = stop_time }
         opts.on('-o', '--organizations ORGANIZATIONS', 'comma separated list of organization IDs') do |organizations|
           @options.organizations = organizations
         end
@@ -118,7 +119,7 @@ class HubstaffExport
       when 'export-screens'
         export_screens
       else
-        puts 'unknown command'; exit 0
+        fail 'unknown command'
       end
     end
 
@@ -136,40 +137,88 @@ class HubstaffExport
 
       parse_response(http(uri).request(request))
     rescue Errno::ETIMEDOUT => ex
-      puts 'there was a timout'; exit 0
+      fail 'there was a timout'
+    end
+
+    def get(url, params)
+      uri = URI.parse(url)
+      uri.query = URI.encode_www_form(params)
+      request = Net::HTTP::Get.new(uri.request_uri)
+      request['app_token'] = client_config["app_token"]
+      request['auth_token'] = client_config["auth_token"]
+
+      parse_response(http(uri).request(request))
+    rescue Errno::ETIMEDOUT => ex
+      fail 'there was a timout'
     end
 
     def parse_response(response)
       if response.is_a?(Net::HTTPOK) || response.is_a?(Net::HTTPCreated)
         return JSON.parse(response.body)
       elsif response.is_a?(Net::HTTPNotFound)
-        puts 'page not found'; exit 0
+        fail 'page not found'
       elsif response.is_a?(Net::HTTPUnauthorized)
-        puts 'not authorized request'; exit 0
+        fail 'not authorized request'
       elsif response.is_a?(Net::HTTPBadRequest)
-        puts 'bad request'; exit 0
+        puts response.body
+        fail 'bad request'
       else
-        puts 'other error'; exit 0
+        fail 'other error'
       end
     end
 
-    def authentication
-      puts 'doing authentication' if @options.verbose
-      response = post("#{@api_url}/auth", {email: @options.email, password: @options.password})
-
-      file = File.new('hubstaff-client.cfg', "w")
-      File.open(file, 'w') { |file| file.write({token: response["user"]["auth_token"], app_token: @options.app_token, password: @options.password, email: @options.email}.to_json) }
-    end
-
     def client_config
-      puts 'Please use authentication command first'; exit 0 unless File.exists?('hubstaff-client.cfg')
+      unless File.exists?('hubstaff-client.cfg')
+        puts 'Please use authentication command first'; exit 0
+      end
       @client_config ||= JSON.parse(File.read('hubstaff-client.cfg'))
     end
 
-    def export_screens
-      puts 'exporting screens\n' if @options.verbose
+    def authentication
+      puts 'doing authentication' if verbose?
+      fail 'email & password are required' unless @options.email && @options.password
+      response = post("#{@api_url}/auth", {email: @options.email, password: @options.password})
 
-      pp client_config
+      file = File.new('hubstaff-client.cfg', "w")
+      File.open(file, 'w') { |file| file.write({auth_token: response["user"]["auth_token"], app_token: @options.app_token, password: @options.password, email: @options.email}.to_json) }
+    end
+
+    def export_screens
+      puts 'Exporting screens' if verbose?
+      fail 'start_time, stop_time & organizations are required' unless @options.start_time && @options.stop_time && @options.organizations
+
+      response = get("#{@api_url}/screenshots", {start_time: @options.start_time, stop_time: @options.stop_time, organizations: @options.organizations})
+      fail 'there are no screenshots' unless response
+
+      puts 'Saving screenshots:'
+      puts "    total number of screenshots #{response['screenshots'].count}" if verbose?
+      response['screenshots'].map do |screenshot|
+        uri = URI(screenshot['url'])
+        directory_path = "screenshots/project - #{screenshot['project_id']}/user - #{screenshot['user_id']}/#{Date.parse(screenshot['time_slot']).strftime('%Y-%m-%d')}"
+        FileUtils::mkdir_p(directory_path) unless File.directory?(directory_path)
+        # Save screenshots provided and output some feedback
+        Net::HTTP.start(uri.host) do |http|
+          print '.'
+          resp = http.get(uri.path)
+          file_name = "#{DateTime.parse(screenshot['time_slot']).strftime('%I_%M')}-#{screenshot['screen']}.jpg"
+          file_path = File.join("screenshots", "project - #{screenshot['project_id']}", "user - #{screenshot['user_id']}", Date.parse(screenshot['time_slot']).strftime('%Y-%m-%d'), file_name)
+          open(file_path, "wb") do |file|
+            file.write(resp.body)
+          end
+        end
+      end
+      puts ''
+      puts "Done."
+      # pp response
+    end
+
+    def fail(message)
+      puts message
+      exit 0
+    end
+
+    def verbose?
+      @options.verbose
     end
 end
 
