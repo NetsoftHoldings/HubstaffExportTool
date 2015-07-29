@@ -187,7 +187,7 @@ class HubstaffExport
 
       response = post("#{@api_url}/auth", {email: email, password: password})
 
-      File.open('hubstaff-client.cfg', 'w') { |file| file.write({auth_token: response["user"]["auth_token"], app_token: app_token, password: password, email: email}.to_json) }
+      File.open('hubstaff-client.cfg', 'w') { |file| file.write({auth_token: response["user"]["auth_token"], app_token: app_token, email: email}.to_json) }
       puts 'User authentication successful. Tokens are now catched in ./hubstaff-client.cfg'
     end
 
