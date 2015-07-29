@@ -96,7 +96,7 @@ class HubstaffExport
         opts.on('-e', '--export IMAGE_FORMAT', 'what image to export (full || thumb || both) (default is full only)') do |image_format|
           @options.image_format = image_format
         end
-        opts.on('-o', '--organizations ORGANIZATIONS', 'comma separated list of organization IDs') do |organizations|
+        opts.on('-o', '--organizations ORGANIZATIONS', 'comma separated list of organization IDs (required)') do |organizations|
           @options.organizations = organizations
         end
         opts.on('-d', '--directory DIRECTORY', 'a path to the output directory (otherwise ./screens is assumed)') do |directory|
@@ -198,6 +198,7 @@ class HubstaffExport
     def export_screens(start_time, stop_time)
       # raise error if the required parameters are missing
       fail 'start_time stop_time are required' unless start_time && stop_time
+      fail 'an organization filter is required (-o)' if @options.organizations.nil?
 
       # display a simple message of the number of screenshots available
       puts 'Saving screenshots:'
