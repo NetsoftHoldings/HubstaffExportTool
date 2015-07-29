@@ -93,7 +93,7 @@ class HubstaffExport
         opts.on('-p', '--projects PROJECTS', 'comma separated list of project IDs')  {|projects| @options.projects = projects}
         opts.on('-u', '--users USERS', 'comma separated list of user IDs')           {|users| @options.users = users}
 
-        opts.on('-e', '--export IMAGE_FORMAT', 'what image to export (full || thumb || both)') do |image_format|
+        opts.on('-e', '--export IMAGE_FORMAT', 'what image to export (full || thumb || both) (default is full only)') do |image_format|
           @options.image_format = image_format
         end
         opts.on('-o', '--organizations ORGANIZATIONS', 'comma separated list of organization IDs') do |organizations|
