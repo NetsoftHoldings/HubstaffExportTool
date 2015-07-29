@@ -247,7 +247,7 @@ class HubstaffExport
         num_fetched = data['screenshots'].count
         break unless num_fetched > 0
 
-        puts "> Exporting #{num_fetched} screenshots #{extra}."
+        puts "> Exporting a batch of #{num_fetched} screenshots #{extra}."
 
         data['screenshots'].each do |screenshot|
           save_files(screenshot, @options.image_format)
