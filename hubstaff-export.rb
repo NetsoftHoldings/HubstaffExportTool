@@ -210,13 +210,24 @@ class HubstaffExport
       fail 'start_time stop_time are required' unless start_time && stop_time
       fail 'an organization filter is required (-o)' if @options.organizations.nil?
 
+      start_time = DateTime.iso8601(start_time)
+      stop_time = DateTime.iso8601(stop_time)
+
       # display a simple message of the number of screenshots available
       puts 'Saving screenshots:'
+      # DateTime + 1 means increment by one day
+      while start_time < stop_time
+        export_screens_for_range(start_time, [start_time + 1, stop_time].min)
+        start_time = start_time + 1
+      end
+    end
+
+    def export_screens_for_range(start_time, stop_time)
       offset = 0
       loop do
         # make the get request to get screenshots
-        arguments = { start_time:     start_time,
-                      stop_time:      stop_time,
+        arguments = { start_time:     start_time.iso8601,
+                      stop_time:      stop_time.iso8601,
                       organizations:  @options.organizations,
                       users:          @options.users,
                       projects:       @options.projects,
