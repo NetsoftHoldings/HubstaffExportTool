@@ -6,7 +6,7 @@
 #
 # == Examples
 #   Commands to call
-#     ruby hubstaff-export.rb authentication abc345 bob@example.com MyAwesomePass
+#     ruby hubstaff-export.rb authenticate abc345 bob@example.com MyAwesomePass
 #     ruby hubstaff-export.rb export-screens 2015-07-01T00:00:00Z 2015-07-01T07:00:00Z -o 84 -i both
 #
 # == Usage
@@ -80,7 +80,8 @@ class HubstaffExport
         opts.banner = "Usage: hubstaff-export COMMAND [OPTIONS]"
         opts.separator  ""
         opts.separator  "Commands"
-        opts.separator  "     authentication: used to authenticate and cache the password and username"
+        opts.separator  "     authentication app_token username password"
+        opts.separator  "       Authenticates and caches the tokens to 'hubstaff-client.cfg' in the current folder"
         opts.separator  "     export-screens: used to export the screenshots on a defined period"
         opts.separator  ""
         opts.separator  "Options"
@@ -120,8 +121,8 @@ class HubstaffExport
 
     def process_command
       case @arguments[0]
-      when 'authentication'
-        authentication(@arguments[1], @arguments[2], @arguments[3])
+      when 'authenticate'
+        authenticate(@arguments[1], @arguments[2], @arguments[3])
       when 'export-screens'
         export_screens(@arguments[1], @arguments[2])
       else
@@ -174,12 +175,12 @@ class HubstaffExport
 
     def client_config
       unless File.exists?('hubstaff-client.cfg')
-        fail 'Please use authentication command first'
+        fail 'Please use authenticat command first'
       end
       @client_config ||= JSON.parse(File.read('hubstaff-client.cfg'))
     end
 
-    def authentication(app_token, email, password)
+    def authenticate(app_token, email, password)
       puts 'Doing authentication' if verbose?
       fail 'Email & password are required' unless email && password
       File.open('hubstaff-client.cfg', 'w') { |file| file.write({app_token: app_token}.to_json) }

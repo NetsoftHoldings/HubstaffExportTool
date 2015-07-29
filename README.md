@@ -10,7 +10,7 @@ to the hubstaff public API.
 ### Examples
   Commands to call
 
-    ruby hubstaff-export.rb authentication abc345 bob@example.com MyAwesomePass
+    ruby hubstaff-export.rb authenticate abc345 bob@example.com MyAwesomePass
     ruby hubstaff-export.rb export-screens 2015-07-01T00:00:00Z 2015-07-01T07:00:00Z -o 84 -i both
 
 ### Usage
