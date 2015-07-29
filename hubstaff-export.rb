@@ -238,7 +238,7 @@ class HubstaffExport
     end
 
     def directory_for_screenshot(screenshot)
-        File.join(@options.directory, "project - #{screenshot['project_id']}", "user - #{screenshot['user_id']}", Date.parse(screenshot['time_slot']).strftime('%Y-%m-%d'))
+        File.join(@options.directory, "project - #{screenshot['project_id']}", "user - #{screenshot['user_id']}", DateTime.iso8601(screenshot['time_slot']).strftime('%Y-%m-%d'))
     end
 
     def check_directory(screenshot)
@@ -250,7 +250,7 @@ class HubstaffExport
       # create the directory path where we'll save all the screenshots
       check_directory(screenshot)
 
-      file_name = "#{DateTime.parse(screenshot['recorded_at']).strftime('%I_%M_%S')}-screen-#{screenshot['screen']}.jpg"
+      file_name = "#{DateTime.iso8601(screenshot['recorded_at']).strftime('%I_%M_%S')}-screen-#{screenshot['screen']}.jpg"
       file_name = file_name.gsub /\.[^\.]*$/, "_thumb\\0" if thumb
       file_path = File.join(directory_for_screenshot(screenshot), file_name)
 
