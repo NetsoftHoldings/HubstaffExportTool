@@ -6,8 +6,8 @@
 #
 # == Examples
 #   Commands to call
-#     ruby hubstaff-export.rb authentication -t apptoken -e user@email.com -p password
-#     ruby hubstaff-export.rb export-screens -s 2015-07-01T00:00:00Z -f 2015-07-01T07:00:00Z -o 84 -i both
+#     ruby hubstaff-export.rb authentication abc345 bob@example.com MyAwesomePass
+#     ruby hubstaff-export.rb export-screens 2015-07-01T00:00:00Z 2015-07-01T07:00:00Z -o 84 -i both
 #
 # == Usage
 #   ruby hubstaff-export.rb [action] [options]
@@ -18,18 +18,11 @@
 #   -h, --help          Displays help message
 #   -v, --version       Display the version, then exit
 #   -V, --verbose       Verbose output
-#   -t, --apptoken      The application token in hubstaff
-#   -p, --password      The password to authenticate account
-#   -e, --email         The email used for authentication
-#   -s, --start_time    Start date to pick the screens
-#   -f, --stop_time     End date to pick screens
 #   -j, --projects      Comma separated list of project IDs
 #   -u, --users         Comma separated list of user IDs
-#   -i, --image         What image to export (full || thumb || both)
+#   -e, --export        What image to export (full || thumb || both)
 #   -o, --organizations Comma separated list of organization IDs
 #   -d, --directory     A path to the output directory (otherwise ./screens is assumed)
-#
-#
 #
 # == Author
 #   Chocksy - @Hubstaff
@@ -49,7 +42,7 @@ class Hash
 end
 
 class HubstaffExport
-  VERSION = '0.0.1'
+  VERSION = '0.5.0'
 
   attr_reader :options
 
@@ -66,14 +59,14 @@ class HubstaffExport
   # Parse options, check arguments, then process the command
   def run
     # puts arguments_valid?
-    if parsed_options? && arguments_valid?
+    if parsed_options?
       puts "Start at #{DateTime.now}" if verbose?
 
       output_options if verbose?
 
       process_command
 
-      puts "Finished at #{DateTime.now}" if verbose?
+      puts "\nFinished at #{DateTime.now}" if verbose?
     else
       puts 'The options passed are not valid!'
     end
@@ -96,15 +89,10 @@ class HubstaffExport
         opts.on('-h', '--help', 'help method to show options')    { puts opts; exit 0 }
         opts.on('-V', '--verbose', 'verbose the script calls')    { @options.verbose = true }
 
-        opts.on('-t', '--apptoken TOKEN', 'the application token in hubstaff')       {|token| @options.app_token = token}
-        opts.on('-p', '--password PASSWORD', 'the password to authenticate account') {|password| @options.password = password }
-        opts.on('-e', '--email EMAIL', 'the email used for authentication')          {|email| @options.email = email }
-        opts.on('-s', '--start_time START_TIME', 'start date to pick the screens')   {|start_time| @options.start_time = start_time}
-        opts.on('-f', '--stop_time STOP_TIME', 'end date to pick screens')           {|stop_time| @options.stop_time = stop_time }
-        opts.on('-j', '--projects PROJECTS', 'comma separated list of project IDs')  {|projects| @options.projects = projects}
+        opts.on('-p', '--projects PROJECTS', 'comma separated list of project IDs')  {|projects| @options.projects = projects}
         opts.on('-u', '--users USERS', 'comma separated list of user IDs')           {|users| @options.users = users}
 
-        opts.on('-i', '--image IMAGE_FORMAT', 'what image to export (full || thumb || both)') do |image_format|
+        opts.on('-e', '--export IMAGE_FORMAT', 'what image to export (full || thumb || both)') do |image_format|
           @options.image_format = image_format
         end
         opts.on('-o', '--organizations ORGANIZATIONS', 'comma separated list of organization IDs') do |organizations|
@@ -126,24 +114,16 @@ class HubstaffExport
       end
     end
 
-    # True if required arguments were provided
-    def arguments_valid?
-      # puts @arguments.length
-      # TO DO - implement your real logic here
-      # true if @arguments.length == 1
-      true
-    end
-
     def output_version
       puts "#{File.basename(__FILE__)} version #{VERSION}"
     end
 
     def process_command
-      case ARGV[0]
+      case @arguments[0]
       when 'authentication'
-        authentication
+        authentication(@arguments[1], @arguments[2], @arguments[3])
       when 'export-screens'
-        export_screens
+        export_screens(@arguments[1], @arguments[2])
       else
         fail 'unknown command'
       end
@@ -158,7 +138,7 @@ class HubstaffExport
     def post(url, params)
       uri = URI.parse(url)
       request = Net::HTTP::Post.new(uri.request_uri)
-      request['app_token'] = @options.app_token
+      request['app_token'] = client_config["app_token"]
       request.set_form_data(params)
 
       parse_response(http(uri).request(request))
@@ -186,7 +166,6 @@ class HubstaffExport
       elsif response.is_a?(Net::HTTPUnauthorized)
         fail 'not authorized request'
       elsif response.is_a?(Net::HTTPBadRequest)
-        puts response.body
         fail 'bad request'
       else
         fail 'other error'
@@ -195,46 +174,51 @@ class HubstaffExport
 
     def client_config
       unless File.exists?('hubstaff-client.cfg')
-        puts 'Please use authentication command first'; exit 0
+        fail 'Please use authentication command first'
       end
       @client_config ||= JSON.parse(File.read('hubstaff-client.cfg'))
     end
 
-    def authentication
-      puts 'doing authentication' if verbose?
-      fail 'email & password are required' unless @options.email && @options.password
-      response = post("#{@api_url}/auth", {email: @options.email, password: @options.password})
+    def authentication(app_token, email, password)
+      puts 'Doing authentication' if verbose?
+      fail 'Email & password are required' unless email && password
+      File.open('hubstaff-client.cfg', 'w') { |file| file.write({app_token: app_token}.to_json) }
 
-      file = File.new('hubstaff-client.cfg', "w")
-      File.open(file, 'w') { |file| file.write({auth_token: response["user"]["auth_token"], app_token: @options.app_token, password: @options.password, email: @options.email}.to_json) }
+      response = post("#{@api_url}/auth", {email: email, password: password})
+
+      File.open('hubstaff-client.cfg', 'w') { |file| file.write({auth_token: response["user"]["auth_token"], app_token: app_token, password: password, email: email}.to_json) }
+      puts 'User authentication successful. Tokens are now catched in ./hubstaff-client.cfg'
     end
 
-    def export_screens(offset=0)
-      puts 'Exporting screens' if verbose?
+    def export_screens(start_time, stop_time)
       # raise error if the required parameters are missing
-      fail 'start_time, stop_time & organizations are required' unless @options.start_time && @options.stop_time && @options.organizations
-      # make the get request to get screenshots
-      arguments = { start_time:     @options.start_time,
-                    stop_time:      @options.stop_time,
-                    organizations:  @options.organizations,
-                    users:          @options.users,
-                    projects:       @options.projects,
-                    offset:         offset
-                  }.compact
-      response  = get("#{@api_url}/screenshots", arguments)
-      fail 'there are no screenshots' unless response
+      fail 'start_time stop_time are required' unless start_time && stop_time
 
       # display a simple message of the number of screenshots available
       puts 'Saving screenshots:'
-      puts "  total number of screenshots #{@options.image_format=='both' ? response['screenshots'].count*2 : response['screenshots'].count}"
-      puts "  *if we are going to have 100 screenshots here we will be making multiple requests until we get them all"
-      response['screenshots'].map do |screenshot|
-        save_files(screenshot, @options.image_format)
+      offset = 0
+      loop do
+        # make the get request to get screenshots
+        arguments = { start_time:     start_time,
+                      stop_time:      stop_time,
+                      organizations:  @options.organizations,
+                      users:          @options.users,
+                      projects:       @options.projects,
+                      offset:         offset
+                    }.compact
+        data  = get("#{@api_url}/screenshots", arguments)
+
+        num_fetched = data['screenshots'].count
+        break unless num_fetched > 0
+
+        puts "\n  Exporting #{@options.image_format=='both' ? num_fetched*2 : num_fetched} screenshots:"
+
+        data['screenshots'].each do |screenshot|
+          save_files(screenshot, @options.image_format)
+        end
+
+        offset += 100
       end
-      puts ''
-      puts "Done."
-      # call the export screenshots method if we have 100 screenshots on the last request
-      export_screens(offset+100) if response['screenshots'].count==100
     end
 
     def check_directory(screenshot)

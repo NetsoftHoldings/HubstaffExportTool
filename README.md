@@ -10,8 +10,8 @@ to the hubstaff public API.
 ### Examples
   Commands to call
 
-    ruby hubstaff-export.rb authentication -t apptoken -e user@email.com -p password
-    ruby hubstaff-export.rb export-screens -s 2015-07-01T00:00:00Z -f 2015-07-01T07:00:00Z -o 84 -i both
+    ruby hubstaff-export.rb authentication abc345 bob@example.com MyAwesomePass
+    ruby hubstaff-export.rb export-screens 2015-07-01T00:00:00Z 2015-07-01T07:00:00Z -o 84 -i both
 
 ### Usage
     ruby hubstaff-export.rb [action] [options]
@@ -22,11 +22,6 @@ to the hubstaff public API.
     -h, --help          Displays help message
     -v, --version       Display the version, then exit
     -V, --verbose       Verbose output
-    -t, --apptoken      The application token in hubstaff
-    -p, --password      The password to authenticate account
-    -e, --email         The email used for authentication
-    -s, --start_time    Start date to pick the screens
-    -f, --stop_time     End date to pick screens
     -j, --projects      Comma separated list of project IDs
     -u, --users         Comma separated list of user IDs
     -i, --image         What image to export (full || thumb || both)
