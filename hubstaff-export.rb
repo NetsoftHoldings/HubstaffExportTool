@@ -172,8 +172,10 @@ class HubstaffExport
         fail 'not authorized request'
       elsif response.is_a?(Net::HTTPBadRequest)
         fail 'bad request'
+      elsif response.is_a?(Net::HTTPServiceUnavailable)
+        fail 'timeout fetching data.'
       else
-        fail 'other error'
+        fail "Unexpected Error: #{response}"
       end
     end
 
