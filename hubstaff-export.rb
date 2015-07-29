@@ -214,16 +214,25 @@ class HubstaffExport
       stop_time = DateTime.iso8601(stop_time)
 
       # display a simple message of the number of screenshots available
-      puts 'Saving screenshots:'
       # DateTime + 1 means increment by one day
       while start_time < stop_time
-        export_screens_for_range(start_time, [start_time + 1, stop_time].min)
+        stop = [start_time + 1, stop_time].min
+        puts "Saving screenshots for #{start_time} to #{stop_time}"
+        export_screens_for_range(start_time, stop)
         start_time = start_time + 1
       end
     end
 
     def export_screens_for_range(start_time, stop_time)
       offset = 0
+      extra = case @options.image_format
+                when 'both'
+                  'with full and thumbs'
+                when 'full'
+                  'with just full'
+                when 'thumb'
+                  'with just thumbs'
+                end
       loop do
         # make the get request to get screenshots
         arguments = { start_time:     start_time.iso8601,
@@ -238,11 +247,14 @@ class HubstaffExport
         num_fetched = data['screenshots'].count
         break unless num_fetched > 0
 
-        puts "\n  Exporting #{@options.image_format=='both' ? num_fetched*2 : num_fetched} screenshots:"
+        puts "> Exporting #{num_fetched} screenshots #{extra}."
 
         data['screenshots'].each do |screenshot|
           save_files(screenshot, @options.image_format)
+          print '.'
         end
+
+        puts
 
         offset += 100
       end
@@ -293,10 +305,8 @@ class HubstaffExport
 
     def download_file(url, file_path)
       uri = URI(url)
-      # Save screenshots provided and output some feedback
+      # Save screenshots provided
       Net::HTTP.start(uri.host) do |http|
-        print '.'
-
         resp = http.get(uri.path)
 
         open(file_path, "wb") do |file|
