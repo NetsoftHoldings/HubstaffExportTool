@@ -249,7 +249,7 @@ class HubstaffExport
     end
 
     def directory_for_screenshot(screenshot)
-        File.join(@options.directory, "project - #{screenshot['project_id']}", "user - #{screenshot['user_id']}", DateTime.iso8601(screenshot['time_slot']).strftime('%Y-%m-%d'))
+      File.join(@options.directory, "project - #{screenshot['project_id']}", "user - #{screenshot['user_id']}", DateTime.iso8601(screenshot['time_slot']).strftime('%Y-%m-%d'))
     end
 
     def check_directory(screenshot)
