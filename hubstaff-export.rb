@@ -20,7 +20,7 @@
 #   -V, --verbose       Verbose output
 #   -j, --projects      Comma separated list of project IDs
 #   -u, --users         Comma separated list of user IDs
-#   -e, --export        What image to export (full || thumb || both)
+#   -i, --image_format  What image to export (full || thumb || both)
 #   -o, --organizations Comma separated list of organization IDs
 #   -d, --directory     A path to the output directory (otherwise ./screens is assumed)
 #
@@ -101,7 +101,7 @@ class HubstaffExport
         opts.on('-p', '--projects PROJECTS', 'comma separated list of project IDs')  {|projects| @options.projects = projects}
         opts.on('-u', '--users USERS', 'comma separated list of user IDs')           {|users| @options.users = users}
 
-        opts.on('-e', '--export IMAGE_FORMAT', 'what image to export (full || thumb || both) (default is full only)') do |image_format|
+        opts.on('-i', '--image_format IMAGE_EXPORT_TYPE', 'what image to export (full || thumb || both) (default is full only)') do |image_format|
           @options.image_format = image_format
         end
         opts.on('-o', '--organizations ORGANIZATIONS', 'comma separated list of organization IDs (required)') do |organizations|
@@ -217,7 +217,7 @@ class HubstaffExport
       # DateTime + 1 means increment by one day
       while start_time < stop_time
         stop = [start_time + 1, stop_time].min
-        puts "Saving screenshots for #{start_time} to #{stop_time}"
+        puts "Saving screenshots for #{start_time} to #{stop}"
         export_screens_for_range(start_time, stop)
         start_time = start_time + 1
       end
@@ -273,8 +273,7 @@ class HubstaffExport
       # create the directory path where we'll save all the screenshots
       check_directory(screenshot)
 
-      file_name = "#{DateTime.iso8601(screenshot['recorded_at']).strftime('%I_%M_%S')}-screen-#{screenshot['screen']}.jpg"
-      file_name = file_name.gsub /\.[^\.]*$/, "_thumb\\0" if thumb
+      file_name = "#{DateTime.iso8601(screenshot['recorded_at']).strftime('%I_%M_%S')}-screen-#{screenshot['screen']}#{thumb ? '_thumb' : ''}.jpg"
       file_path = File.join(directory_for_screenshot(screenshot), file_name)
 
       file_path
