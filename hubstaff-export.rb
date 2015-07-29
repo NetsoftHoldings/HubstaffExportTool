@@ -76,7 +76,7 @@ class HubstaffExport
 
     def parsed_options?
       # Specify options
-      opts_parser = OptionParser.new do |opts|
+      @opts_parser = OptionParser.new do |opts|
         opts.banner = "Usage: hubstaff-export COMMAND [OPTIONS]"
         opts.separator  ""
         opts.separator  "Commands"
@@ -103,7 +103,7 @@ class HubstaffExport
           @options.directory = directory
         end
       end
-      opts_parser.parse!(@arguments) rescue return false
+      @opts_parser.parse!(@arguments) rescue return false
       true
     end
 
@@ -125,8 +125,12 @@ class HubstaffExport
         authenticate(@arguments[1], @arguments[2], @arguments[3])
       when 'export-screens'
         export_screens(@arguments[1], @arguments[2])
+      when nil
+        puts @opts_parser
+        exit
       else
-        fail 'unknown command'
+        puts @opts_parser
+        fail "*** Unknown command #{@arguments[0]}"
       end
     end
 
