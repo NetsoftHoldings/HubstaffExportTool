@@ -151,7 +151,7 @@ class HubstaffExport
     def post(url, params)
       uri = URI.parse(url)
       request = Net::HTTP::Post.new(uri.request_uri)
-      request['app_token'] = client_config["app_token"]
+      request['App-Token'] = client_config["app_token"]
       request.set_form_data(params)
 
       parse_response(http(uri).request(request))
@@ -163,8 +163,8 @@ class HubstaffExport
       uri = URI.parse(url)
       uri.query = URI.encode_www_form(params)
       request = Net::HTTP::Get.new(uri.request_uri)
-      request['app_token'] = client_config["app_token"]
-      request['auth_token'] = client_config["auth_token"]
+      request['App-Token'] = client_config["app_token"]
+      request['Auth-Token'] = client_config["auth_token"]
 
       parse_response(http(uri).request(request))
     rescue Errno::ETIMEDOUT => ex
