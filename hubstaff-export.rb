@@ -80,7 +80,7 @@ class HubstaffExport
         opts.banner = "Usage: hubstaff-export COMMAND [OPTIONS]"
         opts.separator  ""
         opts.separator  "Commands"
-        opts.separator  "     authentication app_token username password"
+        opts.separator  "     authenticate app_token username password"
         opts.separator  "       Authenticates and caches the tokens to 'hubstaff-client.cfg' in the current folder"
         opts.separator  "     export-screens start_time stop_time"
         opts.separator  "       Exports screenshots on a defined period."
