@@ -53,6 +53,7 @@ class HubstaffExport
     @options.verbose = false
     @options.image_format = 'full'
     @options.directory = 'screens'
+    @options.skip_ssl_verify = false
     @api_url = 'https://api.hubstaff.com/v1'
   end
 
@@ -100,6 +101,7 @@ class HubstaffExport
 
         opts.on('-p', '--projects PROJECTS', 'comma separated list of project IDs')  {|projects| @options.projects = projects}
         opts.on('-u', '--users USERS', 'comma separated list of user IDs')           {|users| @options.users = users}
+        opts.on(nil, '--no-ssl-verify', 'disable SSL certificate validation')        {|s| @options.skip_ssl_verify = s}
 
         opts.on('-i', '--image_format IMAGE_EXPORT_TYPE', 'what image to export (full || thumb || both) (default is full only)') do |image_format|
           @options.image_format = image_format
@@ -144,6 +146,7 @@ class HubstaffExport
 
     def http(uri)
       http = Net::HTTP.new(uri.host, uri.port)
+      http.verify_mode = OpenSSL::SSL::VERIFY_NONE if @options.skip_ssl_verify
       http.use_ssl = true
       return http
     end
