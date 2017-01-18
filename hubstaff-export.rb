@@ -253,8 +253,12 @@ class HubstaffExport
         puts "> Exporting a batch of #{num_fetched} screenshots #{extra}."
 
         data['screenshots'].each do |screenshot|
-          save_files(screenshot, @options.image_format)
-          print '.'
+          begin
+            save_files(screenshot, @options.image_format)
+            print '.'
+          rescue
+            puts 'x'
+          end
         end
 
         puts
