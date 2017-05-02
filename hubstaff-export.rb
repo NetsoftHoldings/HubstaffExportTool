@@ -263,7 +263,7 @@ class HubstaffExport
 
         puts
 
-        offset += 100
+        offset += num_fetched
       end
     end
 
