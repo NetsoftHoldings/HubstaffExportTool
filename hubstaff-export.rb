@@ -18,7 +18,7 @@
 #   -h, --help          Displays help message
 #   -v, --version       Display the version, then exit
 #   -V, --verbose       Verbose output
-#   -j, --projects      Comma separated list of project IDs
+#   -p, --projects      Comma separated list of project IDs
 #   -u, --users         Comma separated list of user IDs
 #   -i, --image_format  What image to export (full || thumb || both)
 #   -o, --organizations Comma separated list of organization IDs
