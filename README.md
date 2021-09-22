@@ -8,10 +8,14 @@ to the hubstaff public API.
   - It uses the Hubstaff API.
 
 ### Examples
-  Commands to call
+Commands to call
 
-    ruby hubstaff-export.rb authenticate abc345 bob@example.com MyAwesomePass
+    ruby hubstaff-export.rb token PersonalAccessRefreshToken
     ruby hubstaff-export.rb export-screens 2015-07-01T00:00:00Z 2015-07-01T07:00:00Z -o 84 -i both
+
+### Obtaining a personal access token
+
+Go to the [https://developer.hubstaff.com/personal_access_tokens](Hubstaff developer site) to create a personal access token with the Ability to read hubstaff data scope.  
 
 ### Usage
     ruby hubstaff-export.rb [action] [options]
@@ -25,7 +29,7 @@ to the hubstaff public API.
     -j, --projects      Comma separated list of project IDs
     -u, --users         Comma separated list of user IDs
     -i, --image         What image to export (full || thumb || both)
-    -o, --organizations Comma separated list of organization IDs
+    -o, --organization  The organization ID
     -d, --directory     A path to the output directory (otherwise ./screens is assumed)
 
 ### Author
