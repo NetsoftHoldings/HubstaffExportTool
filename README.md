@@ -15,7 +15,7 @@ Commands to call
 
 ### Obtaining a personal access token
 
-Go to the [https://developer.hubstaff.com/personal_access_tokens](Hubstaff developer site) to create a personal access token with the Ability to read hubstaff data scope.  
+Go to the [Hubstaff developer site](https://developer.hubstaff.com/personal_access_tokens) to create a personal access token with the Ability to read hubstaff data scope.  
 
 ### Usage
     ruby hubstaff-export.rb [action] [options]
