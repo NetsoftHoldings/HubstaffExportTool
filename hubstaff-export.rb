@@ -562,7 +562,8 @@ class ExportScreensCommand < BaseCommand
     uri = URI(url)
     # Save screenshots provided
     Net::HTTP.start(uri.host) do |http|
-      resp = http.get(uri.path)
+      resp = http.get(uri)
+      raise 'Invalid request' unless resp.is_a?(Net::HTTPSuccess)
 
       File.open(file_path, 'wb') do |file|
         file.write(resp.body)
